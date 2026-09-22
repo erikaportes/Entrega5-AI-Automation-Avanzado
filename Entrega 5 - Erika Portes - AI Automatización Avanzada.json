@@ -1,0 +1,438 @@
+{
+  "name": "Entrega 5 - Erika Portes - AI Automatización Avanzada",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "INGESTA\n\n",
+        "height": 80,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        80,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "628a5b1c-1650-4bb8-b094-1717a90c0c23",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "formTitle": "Manual politicas",
+        "formDescription": "Adjunta tu manual de políticas para procesar con la IA",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Documento",
+              "fieldType": "file",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {
+          "buttonLabel": "Subir archivo",
+          "respondWithOptions": {
+            "values": {
+              "formSubmittedText": "Listo. Tu documento se ha subido con éxito."
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.6,
+      "position": [
+        0,
+        0
+      ],
+      "id": "fe9a8036-aca4-4f42-835e-3d018f0ca055",
+      "name": "Manual políticas adjunto",
+      "webhookId": "49c495c7-3ff1-446a-a7e5-12b1df596817"
+    },
+    {
+      "parameters": {
+        "modelName": "embed-multilingual-v3.0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+      "typeVersion": 1,
+      "position": [
+        416,
+        304
+      ],
+      "id": "fef4ab13-bf25-4cb8-8486-fbc9224126ea",
+      "name": "Cohere - Convertir a vector",
+      "retryOnFail": true,
+      "credentials": {
+        "cohereApi": {
+          "id": "HuCGJILv7EEJ3Dai",
+          "name": "Cohere account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "chunkOverlap": 150,
+        "options": {
+          "splitCode": "markdown"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.textSplitterRecursiveCharacterTextSplitter",
+      "typeVersion": 1,
+      "position": [
+        576,
+        512
+      ],
+      "id": "cd0f7dd9-34d4-4a4e-94e6-413a90511efc",
+      "name": "Chunking"
+    },
+    {
+      "parameters": {
+        "jsonMode": "expressionData",
+        "jsonData": "={{ $json.text }}",
+        "textSplittingMode": "custom",
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "manual",
+                "value": "={{ $('Manual políticas adjunto').item.json.Documento[0].filename }}"
+              }
+            ]
+          }
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.documentDefaultDataLoader",
+      "typeVersion": 1.1,
+      "position": [
+        576,
+        304
+      ],
+      "id": "04fc0a7f-1047-4362-bc91-62ff63cda155",
+      "name": "Data Splitter"
+    },
+    {
+      "parameters": {
+        "mode": "insert",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "nia",
+          "mode": "list",
+          "cachedResultName": "nia"
+        },
+        "options": {
+          "clearNamespace": false,
+          "pineconeNamespace": "manual"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        416,
+        96
+      ],
+      "id": "4113bb38-67b0-48f6-8f5c-c0dfa271e76f",
+      "name": "Pinecone - Insertar info",
+      "credentials": {
+        "pineconeApi": {
+          "id": "BxS9JOjViKLzcj7r",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "binaryPropertyName": "Documento",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        208,
+        -96
+      ],
+      "id": "05dbe5d9-8b7b-4a7c-aa12-fc8c9e85deba",
+      "name": "Extracción pdf simple"
+    },
+    {
+      "parameters": {
+        "tier": "agentic",
+        "inputDataFieldName": "Documento"
+      },
+      "type": "@llamaindex/n8n-nodes-llamacloud.llamaParsePlatform",
+      "typeVersion": 1,
+      "position": [
+        208,
+        96
+      ],
+      "id": "c91bab4c-65e2-4526-913e-6b9dac8451fe",
+      "name": "Parse - Convertir pdf a Markdown",
+      "credentials": {
+        "llamaParseApi": {
+          "id": "WF5Wts28RsLahbvy",
+          "name": "LlamaParse account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.5,
+      "position": [
+        1008,
+        -96
+      ],
+      "id": "db3809a9-b064-4dcd-855c-fa51e1432d13",
+      "name": "Chat cliente",
+      "webhookId": "31efd118-a6b9-4629-ab47-78210e117353"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "# ROL\n\nEres el Agente de Consulta_manual_politicas_Nia.\n\nTu función es responder exclusivamente consultas relacionadas con las políticas comerciales, cancelación y reembolso de servicios, plazos de entrega de proyectos y campañas, medios de pago y planes de facturación, garantías de servicio, facturación y marco normativo aplicable de Ni@ Digital Brand que se encuentra en Consulta_manual_politicas_Nia.\n\nDebes utilizar como fuente principal y obligatoria el documento:\n\n\"Manual de Políticas Comerciales\nNi@ Digital Brand · Versión 2026.1 · Vigente desde el 1 de enero de 2026\"\n\n# FUENTE DE CONOCIMIENTO\n\nLa información contenida en el Manual de Políticas Comerciales es la fuente oficial para responder consultas sobre políticas.\n\nDebes respetar exactamente las condiciones, plazos, excepciones, restricciones y términos establecidos en el manual.\n\nEl manual reemplaza cualquier versión anterior.\n\nSi existe una discrepancia entre información publicada en el sitio web, en una propuesta comercial particular, y el Manual de Políticas Comerciales, debes considerar como válida la información establecida en el manual, salvo que un contrato de servicio firmado establezca condiciones específicas para esa cuenta.\n\n# REGLAS DE RESPUESTA\n\n1. Responde únicamente con información respaldada por el Manual de Políticas Comerciales.\n\n2. NO inventes políticas, excepciones, descuentos, plazos, condiciones o procedimientos que no estén establecidos en el manual.\n\n3. NO completes información faltante utilizando conocimiento general, suposiciones o información externa.\n\n4. Si el manual no contiene información suficiente para responder la consulta, indícalo claramente.\n\n5. Si existen condiciones o excepciones aplicables al caso del usuario, debes mencionarlas.\n\n6. Diferencia claramente entre:\n   - Política comercial de cancelación y reembolso de servicios.\n   - Derecho legal de revocación.\n   - Garantía de conformidad.\n   - Garantía extendida por línea de servicio.\n\n7. No confundas los plazos establecidos para cancelación comercial con los plazos establecidos para la revocación legal.\n\n8. Cuando una política tenga requisitos específicos, debes indicarlos de forma clara y completa.\n\n9. Cuando existan diferentes condiciones dependiendo del tipo de servicio (recurrente o proyecto a medida), la línea de servicio, el medio de pago o el plan contratado, identifica primero cuál corresponde al caso del usuario.\n\n10. Si la pregunta es ambigua y necesitas información adicional para determinar qué política aplica, solicita únicamente los datos necesarios para resolverla.\n\n11. No solicites información confidencial, contraseñas, datos completos de tarjetas bancarias, documentos de identidad ni información que no sea necesaria para determinar la política aplicable.\n\n12. Mantén un tono profesional, claro, cordial y orientado a ayudar al usuario.\n\n# PRIORIDAD DE INFORMACIÓN\n\nCuando respondas una consulta, sigue esta prioridad:\n\n1. Información específica del Manual de Políticas Comerciales que corresponda directamente a la consulta.\n2. Excepciones o condiciones específicas establecidas en el mismo manual.\n3. Si el manual no contempla el caso, informa que no existe información suficiente en la fuente oficial.\n\nNunca sustituyas la información del manual por conocimiento externo.\n\n# ESTRUCTURA DE RESPUESTA\n\nSiempre que sea posible:\n\n1. Responde directamente la pregunta del usuario.\n2. Explica las condiciones relevantes.\n3. Indica excepciones o restricciones cuando correspondan.\n4. Si aplica, indica el siguiente paso que puede realizar el usuario.\n5. FINALIZA SIEMPRE la respuesta con la fuente oficial utilizando exactamente el nombre completo indicado en el documento.\n\n# FORMATO OBLIGATORIO DE LA FUENTE\n\nAl final de TODAS tus respuestas relacionadas con políticas debes incluir:\n\nFuente: Manual de Políticas Comerciales — Ni@ Digital Brand · Versión 2026.1 · Vigente desde el 1 de enero de 2026\n\nNo alteres, abrevies ni reemplaces el nombre de la fuente.\n\nLa fuente debe aparecer siempre al final de la respuesta.\n\n# EJEMPLO\n\nUsuario:\n\"¿Puedo cancelar mi plan de redes sociales después de 20 días de contratado?\"\n\nRespuesta esperada:\n\nSí, podés solicitar la baja del plan. La cancelación de servicios recurrentes (como gestión de redes sociales, pauta o mantenimiento web) requiere un preaviso de 15 días corridos antes del próximo vencimiento de facturación.\n\nTené en cuenta que no se realizan reembolsos por el mes en curso una vez iniciada la ejecución del servicio, es decir, si ya se entregó contenido, se configuraron campañas o se avanzó con trabajo de estrategia.\n\nFuente: Manual de Políticas Comerciales — Ni@ Digital Brand · Versión 2026.1 · Vigente desde el 1 de enero de 2026\n\n# CASOS NO CONTEMPLADOS\n\nSi el usuario pregunta algo que no está contemplado en el manual, responde de forma transparente:\n\n\"El Manual de Políticas Comerciales no especifica una condición para este caso, por lo que no puedo confirmar una política aplicable con la información disponible.\"\n\nDespués agrega obligatoriamente:\n\n\"Fuente: Manual de Políticas Comerciales — Ni@ Digital Brand · Versión 2026.1 · Vigente desde el 1 de enero de 2026\"\n\n# REGLA CRÍTICA\n\nNunca presentes como política oficial información que no esté respaldada por el Manual de Políticas Comerciales.\n\nNunca omitas la fuente al final de la respuesta.\n\n# USO OBLIGATORIO DE LA BASE DE CONOCIMIENTO\n\nCuando la consulta del usuario esté relacionada con políticas comerciales,\ndebes consultar obligatoriamente la Base de Conocimiento conectada al agente\nantes de generar una respuesta.\n\nNo respondas utilizando únicamente tu conocimiento interno.\n\nLa información recuperada desde la Base de Conocimiento tiene prioridad\nsobre cualquier conocimiento general del modelo.\n\nSi después de consultar la Base de Conocimiento no encuentras información\nsuficiente para responder la consulta, debes indicarlo claramente.\n\nNO debes completar la información faltante con conocimiento general,\ninferencias, suposiciones o información externa.\n\nSi la información no se encuentra en la Base de Conocimiento, responde:\n\n\"El Manual de Políticas Comerciales no especifica esta condición, por lo\nque no puedo confirmar una política aplicable con la información disponible.\"\n\nNunca inventes una respuesta para completar información que no se encuentre\nen la Base de Conocimiento.\n\nOmite cualquier dato (plazos, excepciones, secciones) que no aparezca literalmente en los chunks devueltos por la tool"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        1216,
+        -96
+      ],
+      "id": "bb55d00e-0478-4771-ae46-00c3732ee998",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [
+        1296,
+        208
+      ],
+      "id": "31c6e59a-ce26-42c4-b72b-776b2862e464",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "modelName": "embed-multilingual-v3.0"
+      },
+      "type": "@n8n/n8n-nodes-langchain.embeddingsCohere",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        288
+      ],
+      "id": "a95fdea3-4fae-4db8-a382-0f35f18a00b4",
+      "name": "Embeddings Cohere",
+      "credentials": {
+        "cohereApi": {
+          "id": "HuCGJILv7EEJ3Dai",
+          "name": "Cohere account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "CONSULTA\n",
+        "height": 80,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1136,
+        -240
+      ],
+      "typeVersion": 1,
+      "id": "21d6ee73-e123-4c0a-9d0b-b95966251ba4",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "mode": "retrieve-as-tool",
+        "toolDescription": "Utiliza el Manual_Politicas_NiaDigitalBrand_2026 como fuente oficial de conocimiento para responder consultas sobre devoluciones, cambios, envíos, pagos, garantías, facturación y normativa aplicable. Debe recuperar únicamente la información relevante del manual, respetar sus condiciones y excepciones, no inventar información y, si el manual no contempla el caso, indicarlo claramente.",
+        "pineconeIndex": {
+          "__rl": true,
+          "value": "nia",
+          "mode": "list",
+          "cachedResultName": "nia"
+        },
+        "options": {
+          "pineconeNamespace": "manual"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.vectorStorePinecone",
+      "typeVersion": 1.3,
+      "position": [
+        1408,
+        112
+      ],
+      "id": "65278c7b-4d0b-4169-bd77-9fc4c5f57556",
+      "name": "Consulta_manual_políticas",
+      "credentials": {
+        "pineconeApi": {
+          "id": "BxS9JOjViKLzcj7r",
+          "name": "Pinecone account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        1088,
+        112
+      ],
+      "id": "a0f4320f-4513-4f01-a660-2fd09acb0e54",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "LiXOmyrggrOQ3Yp1",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Manual políticas adjunto": {
+      "main": [
+        [
+          {
+            "node": "Extracción pdf simple",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Parse - Convertir pdf a Markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cohere - Convertir a vector": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Pinecone - Insertar info",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chunking": {
+      "ai_textSplitter": [
+        [
+          {
+            "node": "Data Splitter",
+            "type": "ai_textSplitter",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Data Splitter": {
+      "ai_document": [
+        [
+          {
+            "node": "Pinecone - Insertar info",
+            "type": "ai_document",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse - Convertir pdf a Markdown": {
+      "main": [
+        [
+          {
+            "node": "Pinecone - Insertar info",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Chat cliente": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        []
+      ]
+    },
+    "Embeddings Cohere": {
+      "ai_embedding": [
+        [
+          {
+            "node": "Consulta_manual_políticas",
+            "type": "ai_embedding",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Consulta_manual_políticas": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "9bc1be1b-907c-4f6c-af27-370d7dd7ac36",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "cb6c67ef7f62273d4f1c145a29ab9525609732c419d08faa99c3dda7f1c5fed7"
+  },
+  "nodeGroups": [],
+  "id": "uyzXBYtiD7QrZUFb",
+  "tags": []
+}
